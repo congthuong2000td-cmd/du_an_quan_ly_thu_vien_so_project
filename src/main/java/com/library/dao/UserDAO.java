@@ -144,7 +144,36 @@ public class UserDAO {
         user.setActive(rs.getInt("active") == 1);
         user.setSecurityQuestion(rs.getString("security_question"));
         user.setSecurityAnswer(rs.getString("security_answer"));
+        user.setStatus(rs.getString("status"));
+        String lastSeen = rs.getString("last_seen");
+        if (lastSeen != null) {
+            user.setLastSeen(java.time.LocalDateTime.parse(lastSeen, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        }
         return user;
+    }
+
+    public boolean updateStatus(int userId, String status) {
+        String sql = "UPDATE users SET status=?, last_seen=? WHERE id=?";
+        try (PreparedStatement ps = dbManager.getConnection().prepareStatement(sql)) {
+            ps.setString(1, status);
+            ps.setString(2, java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            ps.setInt(3, userId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) { e.printStackTrace(); }
+        return false;
+    }
+
+    public List<User> searchUsers(String query, int excludeUserId) {
+        List<User> users = new ArrayList<>();
+        String sql = "SELECT * FROM users WHERE (username LIKE ? OR full_name LIKE ?) AND id != ? AND active = 1 LIMIT 20";
+        try (PreparedStatement ps = dbManager.getConnection().prepareStatement(sql)) {
+            ps.setString(1, "%" + query + "%");
+            ps.setString(2, "%" + query + "%");
+            ps.setInt(3, excludeUserId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) users.add(mapResultSet(rs));
+        } catch (SQLException e) { e.printStackTrace(); }
+        return users;
     }
 
     public User getUserByUsername(String username) {

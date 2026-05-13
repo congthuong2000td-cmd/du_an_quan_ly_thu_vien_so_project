@@ -41,6 +41,7 @@ public class App extends Application {
     }
 
     private void showLogin() {
+        com.library.service.ChatService.getInstance().stop();
         LoginView loginView = new LoginView();
         loginView.setOnLoginSuccess(() -> {
             User user = loginView.getLoggedInUser();
@@ -73,6 +74,7 @@ public class App extends Application {
 
     @Override
     public void stop() {
+        com.library.service.ChatService.getInstance().stop();
         DatabaseManager.getInstance().closeConnection();
     }
 

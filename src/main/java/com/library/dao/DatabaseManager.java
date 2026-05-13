@@ -170,6 +170,66 @@ public class DatabaseManager {
                 )
             """);
 
+            // Create conversations table
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS conversations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT,
+                    type TEXT DEFAULT 'DIRECT',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """);
+
+            // Create conversation_members table
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS conversation_members (
+                    conversation_id INTEGER,
+                    user_id INTEGER,
+                    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (conversation_id, user_id),
+                    FOREIGN KEY (conversation_id) REFERENCES conversations(id),
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            """);
+
+            // Create messages table
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    conversation_id INTEGER,
+                    sender_id INTEGER,
+                    content TEXT,
+                    type TEXT DEFAULT 'TEXT',
+                    file_path TEXT,
+                    sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    is_seen INTEGER DEFAULT 0,
+                    is_deleted INTEGER DEFAULT 0,
+                    FOREIGN KEY (conversation_id) REFERENCES conversations(id),
+                    FOREIGN KEY (sender_id) REFERENCES users(id)
+                )
+            """);
+
+            // Create chat_notifications table
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS chat_notifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    message_id INTEGER,
+                    is_read INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id),
+                    FOREIGN KEY (message_id) REFERENCES messages(id)
+                )
+            """);
+
+            // Migration: add 'status' and 'last_seen' to users
+            try {
+                stmt.execute("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'OFFLINE'");
+                stmt.execute("ALTER TABLE users ADD COLUMN last_seen DATETIME");
+            } catch (SQLException ignored) {
+                // Columns already exist
+            }
+
             seedData(conn);
             System.out.println("Database initialized successfully.");
         } catch (SQLException e) {

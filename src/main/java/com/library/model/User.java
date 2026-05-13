@@ -9,6 +9,8 @@ public class User {
     private boolean active;
     private String securityQuestion;
     private String securityAnswer;
+    private String status; // ONLINE, OFFLINE
+    private java.time.LocalDateTime lastSeen;
 
     public User() {}
 
@@ -53,6 +55,12 @@ public class User {
 
     public String getSecurityAnswer() { return securityAnswer; }
     public void setSecurityAnswer(String securityAnswer) { this.securityAnswer = securityAnswer; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public java.time.LocalDateTime getLastSeen() { return lastSeen; }
+    public void setLastSeen(java.time.LocalDateTime lastSeen) { this.lastSeen = lastSeen; }
 
     @Override
     public String toString() {

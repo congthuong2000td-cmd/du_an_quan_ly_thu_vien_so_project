@@ -61,8 +61,23 @@ public class ReaderMainView extends BorderPane {
         Button myReservationsBtn = createMenuButton("📋  Sách đã đặt", e -> showMyReservations());
         Button readOnlineBtn = createMenuButton("📖  Đọc Online", e -> showReadOnline());
         Button favoritesBtn = createMenuButton("💖  Sách yêu thích", e -> showFavorites());
+        Button chatBtn = createMenuButton("\uD83D\uDCAC  Tin nhắn", e -> showChat());
 
-        menuBox.getChildren().addAll(catalogBtn, myBorrowsBtn, myReservationsBtn, readOnlineBtn, favoritesBtn);
+        menuBox.getChildren().addAll(catalogBtn, myBorrowsBtn, myReservationsBtn, readOnlineBtn, favoritesBtn, chatBtn);
+
+        // Badge for chat
+        com.library.service.ChatService.getInstance().addNotificationListener(count -> {
+            Platform.runLater(() -> {
+                if (count > 0) {
+                    chatBtn.setText("\uD83D\uDCAC  Tin nhắn (" + count + ")");
+                    chatBtn.setStyle("-fx-text-fill: #f38ba8;");
+                } else {
+                    chatBtn.setText("\uD83D\uDCAC  Tin nhắn");
+                    chatBtn.setStyle("");
+                }
+            });
+        });
+        com.library.service.ChatService.getInstance().start(currentUser);
 
         // Spacer
         Region spacer = new Region();
@@ -158,6 +173,10 @@ public class ReaderMainView extends BorderPane {
             Label nameLbl = (Label) userBox.getChildren().get(0);
             nameLbl.setText(currentUser.getFullName());
         }));
+    }
+
+    private void showChat() {
+        setContent(new com.library.ui.panels.chat.ChatMainPanel(currentUser));
     }
 
     public void setOnLogout(Runnable action) { this.onLogout = action; }

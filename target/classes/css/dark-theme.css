@@ -95,3 +95,26 @@
 .separator .line { -fx-border-color: #45475a; }
 .date-picker { -fx-background-color: #45475a; -fx-border-color: #585b70; -fx-border-radius: 8; -fx-background-radius: 8; }
 .date-picker .text-field { -fx-background-color: transparent; -fx-border-color: transparent; }
+
+/* Chat Styles */
+.chat-main-container { -fx-background-color: #1e1e2e; }
+.chat-sidebar { -fx-background-color: #181825; -fx-border-color: transparent #313244 transparent transparent; -fx-border-width: 0 1 0 0; }
+.chat-area { -fx-background-color: #1e1e2e; }
+.chat-header { -fx-background-color: #181825; -fx-border-color: transparent transparent #313244 transparent; -fx-border-width: 0 0 1 0; }
+.chat-active-name { -fx-text-fill: #cdd6f4; -fx-font-size: 16px; -fx-font-weight: bold; }
+.chat-input-area { -fx-background-color: #181825; -fx-border-color: #313244 transparent transparent transparent; -fx-border-width: 1 0 0 0; }
+.chat-send-btn { -fx-background-color: #89b4fa; -fx-text-fill: #1e1e2e; -fx-background-radius: 50%; -fx-min-width: 40; -fx-min-height: 40; -fx-cursor: hand; }
+.chat-icon-btn { -fx-background-color: transparent; -fx-text-fill: #a6adc8; -fx-font-size: 20px; -fx-cursor: hand; }
+.chat-icon-btn:hover { -fx-text-fill: #cdd6f4; }
+.chat-bubble-mine { -fx-background-color: #89b4fa; -fx-background-radius: 15 15 2 15; }
+.chat-bubble-mine .chat-text { -fx-fill: #11111b; }
+.chat-bubble-other { -fx-background-color: #313244; -fx-background-radius: 15 15 15 2; }
+.chat-bubble-other .chat-text { -fx-fill: #cdd6f4; }
+.conversation-cell { -fx-background-color: transparent; }
+.conversation-cell:filled:hover { -fx-background-color: #313244; }
+.conversation-cell:filled:selected { -fx-background-color: #89b4fa22; }
+.conv-name { -fx-text-fill: #cdd6f4; -fx-font-weight: bold; -fx-font-size: 14px; }
+.conv-last-msg { -fx-text-fill: #a6adc8; -fx-font-size: 11px; }
+.chat-avatar { -fx-fill: #45475a; }
+.chat-badge-small { -fx-background-color: #f38ba8; -fx-text-fill: #1e1e2e; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 2 6; -fx-background-radius: 10; }
+

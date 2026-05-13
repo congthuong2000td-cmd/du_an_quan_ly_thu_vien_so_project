@@ -74,8 +74,23 @@ public class MainView extends BorderPane {
         Button borrowBtn = createMenuButton("\uD83D\uDD04  Mượn / Trả sách", e -> showBorrow());
         Button reserveBtn = createMenuButton("\uD83D\uDCCB  Duyệt đặt sách", e -> showReservations());
         Button statsBtn = createMenuButton("\uD83D\uDCC8  Thống kê", e -> showStatistics());
+        Button chatBtn = createMenuButton("\uD83D\uDCAC  Tin nhắn", e -> showChat());
         
-        menuBox.getChildren().addAll(dashBtn, bookBtn, catBtn, readerBtn, borrowBtn, reserveBtn, statsBtn);
+        menuBox.getChildren().addAll(dashBtn, bookBtn, catBtn, readerBtn, borrowBtn, reserveBtn, statsBtn, chatBtn);
+
+        // Badge for chat
+        com.library.service.ChatService.getInstance().addNotificationListener(count -> {
+            Platform.runLater(() -> {
+                if (count > 0) {
+                    chatBtn.setText("\uD83D\uDCAC  Tin nhắn (" + count + ")");
+                    chatBtn.setStyle("-fx-text-fill: #f38ba8;");
+                } else {
+                    chatBtn.setText("\uD83D\uDCAC  Tin nhắn");
+                    chatBtn.setStyle("");
+                }
+            });
+        });
+        com.library.service.ChatService.getInstance().start(currentUser);
 
         // User management (Admin only)
         if (currentUser.isAdmin()) {
@@ -192,6 +207,10 @@ public class MainView extends BorderPane {
     private void showUsers() {
         userManagementPanel = new UserManagementPanel();
         setContent(userManagementPanel);
+    }
+
+    private void showChat() {
+        setContent(new com.library.ui.panels.chat.ChatMainPanel(currentUser));
     }
 
     public void setOnLogout(Runnable action) { this.onLogout = action; }
