@@ -1,5 +1,10 @@
 package com.library.ui.panels.chat;
 
+import java.io.File;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import com.library.dao.ConversationDAO;
 import com.library.dao.UserDAO;
 import com.library.model.Conversation;
@@ -7,18 +12,23 @@ import com.library.model.Message;
 import com.library.model.User;
 import com.library.service.ChatService;
 import com.library.util.FileHelper;
+
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ChoiceDialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
-
-import java.io.File;
-import java.util.Collections;
-import java.util.List;
 
 public class ChatMainPanel extends HBox {
     private final User currentUser;
@@ -32,14 +42,17 @@ public class ChatMainPanel extends HBox {
     private TextField messageInput;
     private Label activeChatName;
     private Conversation activeConversation;
+    private final Set<Integer> displayedMessageIds = new HashSet<>();
+
+    private boolean isUpdatingSelection = false;
 
     public ChatMainPanel(User user) {
         this.currentUser = user;
         getStyleClass().add("chat-main-container");
-        
+
         buildUI();
         loadConversations();
-        
+
         chatService.addMessageListener(this::handleNewMessage);
     }
 
@@ -55,13 +68,19 @@ public class ChatMainPanel extends HBox {
         searchField.setPromptText("Tìm người dùng...");
         HBox.setHgrow(searchField, Priority.ALWAYS);
         searchField.setOnAction(e -> searchAndStartChat(searchField.getText()));
-        searchBox.getChildren().add(searchField);
+        
+        Button newChatBtn = new Button("➕");
+        newChatBtn.getStyleClass().add("chat-icon-btn");
+        newChatBtn.setOnAction(e -> searchAndStartChat(""));
+
+        searchBox.getChildren().addAll(searchField, newChatBtn);
 
         convListView = new ListView<>();
         convListView.setCellFactory(lv -> new ConversationCell(currentUser.getId()));
         VBox.setVgrow(convListView, Priority.ALWAYS);
         convListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null) openConversation(newVal);
+            if (newVal != null && !isUpdatingSelection)
+                openConversation(newVal);
         });
 
         sidebar.getChildren().addAll(searchBox, convListView);
@@ -104,7 +123,7 @@ public class ChatMainPanel extends HBox {
         HBox.setHgrow(messageInput, Priority.ALWAYS);
         messageInput.setOnAction(e -> handleSendMessage());
 
-        Button sendBtn = new Button("🚀");
+        Button sendBtn = new Button("Send");
         sendBtn.getStyleClass().add("chat-send-btn");
         sendBtn.setOnAction(e -> handleSendMessage());
 
@@ -116,52 +135,78 @@ public class ChatMainPanel extends HBox {
     }
 
     private void loadConversations() {
+        int selectedId = activeConversation != null ? activeConversation.getId() : -1;
         List<Conversation> conversations = chatService.getConversations();
+        
+        isUpdatingSelection = true;
         convListView.setItems(FXCollections.observableArrayList(conversations));
+        
+        if (selectedId != -1) {
+            for (Conversation c : convListView.getItems()) {
+                if (c.getId() == selectedId) {
+                    convListView.getSelectionModel().select(c);
+                    break;
+                }
+            }
+        }
+        isUpdatingSelection = false;
     }
 
     private void openConversation(Conversation conversation) {
         this.activeConversation = conversation;
         activeChatName.setText(conversation.getDisplayName(currentUser.getId()));
-        
+
         chatService.markAsRead(conversation.getId());
-        
+
         messageArea.getChildren().clear();
-        List<Message> history = chatService.getChatHistory(conversation.getId());
-        for (Message m : history) {
-            messageArea.getChildren().add(new MessageBubble(m, currentUser.getId()));
-        }
+        displayedMessageIds.clear();
         
-        Platform.runLater(() -> chatScrollPane.setVvalue(1.0));
-        
+        // Load messages in background thread to prevent UI lag
+        new Thread(() -> {
+            // Load only recent messages (last 50) for faster display - much better performance!
+            List<Message> history = chatService.getRecentMessages(conversation.getId());
+            Platform.runLater(() -> {
+                for (Message m : history) {
+                    if (!displayedMessageIds.contains(m.getId())) {
+                        messageArea.getChildren().add(new MessageBubble(m, currentUser.getId()));
+                        displayedMessageIds.add(m.getId());
+                    }
+                }
+                chatScrollPane.setVvalue(1.0);
+            });
+        }).start();
+
         // Refresh sidebar to update unread counts
         loadConversations();
     }
 
     private void handleSendMessage() {
         String text = messageInput.getText().trim();
-        if (text.isEmpty() || activeConversation == null) return;
+        if (text.isEmpty() || activeConversation == null)
+            return;
 
         Message m = new Message(activeConversation.getId(), currentUser.getId(), text, "TEXT");
         m.setSenderName(currentUser.getFullName());
-        
+
         chatService.sendMessage(m);
         messageInput.clear();
-        
+
         // UI is updated via listener
     }
 
     private void handleAttachFile() {
-        if (activeConversation == null) return;
-        
+        if (activeConversation == null)
+            return;
+
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Chọn tệp gửi");
         File file = fileChooser.showOpenDialog(getScene().getWindow());
-        
+
         if (file != null) {
             String savedPath = FileHelper.saveChatFile(file);
             if (savedPath != null) {
-                Message m = new Message(activeConversation.getId(), currentUser.getId(), "[Tệp đính kèm: " + file.getName() + "]", "FILE");
+                Message m = new Message(activeConversation.getId(), currentUser.getId(),
+                        "[Tệp đính kèm: " + file.getName() + "]", "FILE");
                 m.setFilePath(savedPath);
                 m.setSenderName(currentUser.getFullName());
                 chatService.sendMessage(m);
@@ -172,7 +217,10 @@ public class ChatMainPanel extends HBox {
     private void handleNewMessage(Message m) {
         if (activeConversation != null && m.getConversationId() == activeConversation.getId()) {
             Platform.runLater(() -> {
-                messageArea.getChildren().add(new MessageBubble(m, currentUser.getId()));
+                if (!displayedMessageIds.contains(m.getId())) {
+                    messageArea.getChildren().add(new MessageBubble(m, currentUser.getId()));
+                    displayedMessageIds.add(m.getId());
+                }
                 chatScrollPane.setVvalue(1.0);
                 chatService.markAsRead(activeConversation.getId());
             });
@@ -181,11 +229,14 @@ public class ChatMainPanel extends HBox {
     }
 
     private void searchAndStartChat(String query) {
-        if (query.isEmpty()) return;
-        
         List<User> users = userDAO.searchUsers(query, currentUser.getId());
+        
         if (users.isEmpty()) {
-            showAlert("Không tìm thấy người dùng nào.");
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Thông báo");
+            alert.setHeaderText(null);
+            alert.setContentText("Không tìm thấy người dùng nào phù hợp hoặc người dùng chưa kích hoạt tài khoản.");
+            alert.showAndWait();
             return;
         }
 
@@ -193,12 +244,21 @@ public class ChatMainPanel extends HBox {
         dialog.setTitle("Bắt đầu trò chuyện");
         dialog.setHeaderText("Chọn người dùng để nhắn tin:");
         dialog.setContentText("Người dùng:");
+        
+        // Custom cell factory for ChoiceDialog to show full name
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType == ButtonType.OK) {
+                return dialog.getSelectedItem();
+            }
+            return null;
+        });
 
         dialog.showAndWait().ifPresent(targetUser -> {
             // Check if direct conversation exists
             int existingId = conversationDAO.findDirectConversation(currentUser.getId(), targetUser.getId());
+            
             if (existingId != -1) {
-                // Find in list and select
+                loadConversations();
                 for (Conversation c : convListView.getItems()) {
                     if (c.getId() == existingId) {
                         convListView.getSelectionModel().select(c);
@@ -206,9 +266,12 @@ public class ChatMainPanel extends HBox {
                     }
                 }
             } else {
-                // Create new
-                int newId = conversationDAO.createConversation(null, "DIRECT", 
-                    List.of(currentUser.getId(), targetUser.getId()));
+                // Create new conversation
+                int newId = conversationDAO.createConversation(
+                    targetUser.getFullName(), 
+                    "DIRECT", 
+                    java.util.Arrays.asList(currentUser.getId(), targetUser.getId())
+                );
                 if (newId != -1) {
                     loadConversations();
                     for (Conversation c : convListView.getItems()) {

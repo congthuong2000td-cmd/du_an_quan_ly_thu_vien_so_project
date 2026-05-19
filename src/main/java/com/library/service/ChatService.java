@@ -1,20 +1,21 @@
 package com.library.service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
+import com.library.dao.ChatNotificationDAO;
 import com.library.dao.ConversationDAO;
 import com.library.dao.MessageDAO;
-import com.library.dao.ChatNotificationDAO;
 import com.library.dao.UserDAO;
 import com.library.model.Conversation;
 import com.library.model.Message;
 import com.library.model.User;
+
 import javafx.application.Platform;
 import javafx.concurrent.ScheduledService;
 import javafx.concurrent.Task;
 import javafx.util.Duration;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
 
 public class ChatService {
     private static ChatService instance;
@@ -67,23 +68,24 @@ public class ChatService {
                 };
             }
         };
-        pollingService.setPeriod(Duration.seconds(3));
+        pollingService.setPeriod(Duration.millis(1500)); // 1.5 seconds - much faster than 3s
         pollingService.start();
     }
 
     private synchronized void checkForNewMessages() {
         if (currentUser == null) return;
         
-        // Simple polling: check all conversations for unread messages sent by others
+        // Optimized: Check all conversations for unread messages sent by others
         List<Conversation> convs = conversationDAO.getUserConversations(currentUser.getId());
         boolean hasNew = false;
         
         for (Conversation conv : convs) {
             if (conv.getUnreadCount() > 0) {
-                List<Message> messages = messageDAO.getMessagesByConversation(conv.getId());
-                for (Message m : messages) {
-                    if (m.getId() > lastProcessedMessageId && m.getSenderId() != currentUser.getId()) {
-                        lastProcessedMessageId = Math.max(lastProcessedMessageId, m.getId());
+                // Get only NEW messages since last processed ID - much faster!
+                List<Message> newMessages = messageDAO.getNewMessages(conv.getId(), lastProcessedMessageId);
+                for (Message m : newMessages) {
+                    lastProcessedMessageId = Math.max(lastProcessedMessageId, m.getId());
+                    if (m.getSenderId() != currentUser.getId()) {
                         Platform.runLater(() -> notifyMessageListeners(m));
                         hasNew = true;
                     }
@@ -135,6 +137,13 @@ public class ChatService {
     
     public List<Conversation> getConversations() {
         return conversationDAO.getUserConversations(currentUser.getId());
+    }
+    
+    /**
+     * Get recent messages (last 50) for faster loading
+     */
+    public List<Message> getRecentMessages(int conversationId) {
+        return messageDAO.getRecentMessages(conversationId, 50);
     }
     
     public List<Message> getChatHistory(int conversationId) {

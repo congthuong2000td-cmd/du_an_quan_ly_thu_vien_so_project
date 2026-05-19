@@ -24,6 +24,9 @@ public class ConfigManager {
                 if (props.containsKey("finePerDay")) {
                     Constants.FINE_PER_DAY = Double.parseDouble(props.getProperty("finePerDay"));
                 }
+                if (props.containsKey("dbUrl")) {
+                    Constants.DB_URL = props.getProperty("dbUrl");
+                }
             } else {
                 saveConfig();
             }
@@ -36,6 +39,7 @@ public class ConfigManager {
         try {
             props.setProperty("maxBorrowDays", String.valueOf(Constants.MAX_BORROW_DAYS));
             props.setProperty("finePerDay", String.valueOf(Constants.FINE_PER_DAY));
+            props.setProperty("dbUrl", Constants.DB_URL);
             props.store(new FileOutputStream(CONFIG_FILE), "Library System Configuration");
         } catch (Exception e) {
             e.printStackTrace();

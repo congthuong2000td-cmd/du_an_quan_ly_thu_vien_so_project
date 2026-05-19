@@ -47,13 +47,13 @@ public class BorrowDAO {
 
     public List<BorrowRecord> getRecentRecords(int limit) {
         List<BorrowRecord> records = new ArrayList<>();
-        String sql = """
-            SELECT br.*, r.name as reader_name, b.title as book_title
-            FROM borrow_records br
-            JOIN readers r ON br.reader_id = r.id
-            JOIN books b ON br.book_id = b.id
-            ORDER BY br.id DESC LIMIT ?
-        """;
+        String limitClause = com.library.util.Constants.DB_URL.startsWith("jdbc:sqlite") 
+            ? " LIMIT ?" : " OFFSET 0 ROWS FETCH NEXT ? ROWS ONLY";
+        String sql = "SELECT br.*, r.name as reader_name, b.title as book_title\n" +
+            "FROM borrow_records br\n" +
+            "JOIN readers r ON br.reader_id = r.id\n" +
+            "JOIN books b ON br.book_id = b.id\n" +
+            "ORDER BY br.id DESC" + limitClause;
         try (PreparedStatement ps = dbManager.getConnection().prepareStatement(sql)) {
             ps.setInt(1, limit);
             ResultSet rs = ps.executeQuery();
@@ -173,11 +173,11 @@ public class BorrowDAO {
 
     public Map<String, Integer> getTopBorrowedBooks(int limit) {
         Map<String, Integer> data = new LinkedHashMap<>();
-        String sql = """
-            SELECT b.title, COUNT(*) as count
-            FROM borrow_records br JOIN books b ON br.book_id = b.id
-            GROUP BY br.book_id ORDER BY count DESC LIMIT ?
-        """;
+        String limitClause = com.library.util.Constants.DB_URL.startsWith("jdbc:sqlite") 
+            ? " LIMIT ?" : " OFFSET 0 ROWS FETCH NEXT ? ROWS ONLY";
+        String sql = "SELECT b.title, COUNT(*) as count\n" +
+            "FROM borrow_records br JOIN books b ON br.book_id = b.id\n" +
+            "GROUP BY br.book_id, b.title ORDER BY count DESC" + limitClause;
         try (PreparedStatement ps = dbManager.getConnection().prepareStatement(sql)) {
             ps.setInt(1, limit);
             ResultSet rs = ps.executeQuery();

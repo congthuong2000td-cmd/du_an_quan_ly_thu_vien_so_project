@@ -1,14 +1,16 @@
 package com.library.ui.panels.chat;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import com.library.model.Message;
-import com.library.model.User;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
-import java.time.format.DateTimeFormatter;
 
 public class MessageBubble extends HBox {
     private final Message message;
@@ -42,7 +44,8 @@ public class MessageBubble extends HBox {
         text.getStyleClass().add("chat-text");
         text.setWrappingWidth(350);
         
-        Label timeLabel = new Label(message.getSentAt().format(timeFormatter));
+        LocalDateTime sentAt = message.getSentAt() != null ? message.getSentAt() : LocalDateTime.now();
+        Label timeLabel = new Label(sentAt.format(timeFormatter));
         timeLabel.setStyle("-fx-font-size: 9px; -fx-text-fill: #9399b2;");
         
         HBox footer = new HBox(5);

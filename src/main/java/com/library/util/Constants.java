@@ -1,10 +1,11 @@
 package com.library.util;
 
 public class Constants {
-    // Database
-    public static final String DB_URL = "jdbc:sqlite:library.db";
+    // Database - Will be loaded from config.properties by ConfigManager
+    // Default: SQLite (will be overridden by SQL Server in config.properties)
+    public static String DB_URL = "jdbc:sqlite:library.db";
 
-    // Default config
+    // Default config - Will be loaded from config.properties
     public static int MAX_BORROW_DAYS = 14;
     public static double FINE_PER_DAY = 5000; // 5,000 VND/ngày
 

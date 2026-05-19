@@ -16,7 +16,8 @@ public class ConversationDAO {
         String sqlConv = "INSERT INTO conversations (name, type) VALUES (?, ?)";
         String sqlMember = "INSERT INTO conversation_members (conversation_id, user_id) VALUES (?, ?)";
         
-        try (Connection conn = DatabaseManager.getInstance().getConnection()) {
+        try {
+            Connection conn = DatabaseManager.getInstance().getConnection();
             conn.setAutoCommit(false);
             try {
                 int convId;
@@ -59,8 +60,7 @@ public class ConversationDAO {
                      "WHERE cm.user_id = ? " +
                      "ORDER BY c.created_at DESC";
         
-        try (Connection conn = DatabaseManager.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = DatabaseManager.getInstance().getConnection().prepareStatement(sql)) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -82,8 +82,7 @@ public class ConversationDAO {
         String sql = "SELECT u.* FROM users u " +
                      "JOIN conversation_members cm ON u.id = cm.user_id " +
                      "WHERE cm.conversation_id = ?";
-        try (Connection conn = DatabaseManager.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = DatabaseManager.getInstance().getConnection().prepareStatement(sql)) {
             ps.setInt(1, conversationId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -107,8 +106,7 @@ public class ConversationDAO {
                      "JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id " +
                      "JOIN conversations c ON cm1.conversation_id = c.id " +
                      "WHERE cm1.user_id = ? AND cm2.user_id = ? AND c.type = 'DIRECT'";
-        try (Connection conn = DatabaseManager.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = DatabaseManager.getInstance().getConnection().prepareStatement(sql)) {
             ps.setInt(1, user1);
             ps.setInt(2, user2);
             try (ResultSet rs = ps.executeQuery()) {
@@ -121,19 +119,27 @@ public class ConversationDAO {
     }
 
     private Message getLastMessage(int conversationId) {
+        String limitClause = com.library.util.Constants.DB_URL.startsWith("jdbc:sqlite") 
+            ? " LIMIT 1" : " OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY";
         String sql = "SELECT m.*, u.full_name as sender_name FROM messages m " +
                      "JOIN users u ON m.sender_id = u.id " +
                      "WHERE conversation_id = ? AND is_deleted = 0 " +
-                     "ORDER BY sent_at DESC LIMIT 1";
-        try (Connection conn = DatabaseManager.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+                     "ORDER BY sent_at DESC" + limitClause;
+        try (PreparedStatement ps = DatabaseManager.getInstance().getConnection().prepareStatement(sql)) {
             ps.setInt(1, conversationId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     Message m = new Message();
                     m.setId(rs.getInt("id"));
                     m.setContent(rs.getString("content"));
-                    m.setSentAt(LocalDateTime.parse(rs.getString("sent_at"), formatter));
+                    String sentAtStr = rs.getString("sent_at");
+                    if (sentAtStr != null) {
+                        try {
+                            m.setSentAt(LocalDateTime.parse(sentAtStr.split("\\.")[0], formatter));
+                        } catch (Exception ex) {
+                            m.setSentAt(LocalDateTime.now());
+                        }
+                    }
                     m.setSenderName(rs.getString("sender_name"));
                     return m;
                 }
@@ -146,8 +152,7 @@ public class ConversationDAO {
 
     private int getUnreadCount(int conversationId, int userId) {
         String sql = "SELECT COUNT(*) FROM messages WHERE conversation_id = ? AND sender_id != ? AND is_seen = 0";
-        try (Connection conn = DatabaseManager.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = DatabaseManager.getInstance().getConnection().prepareStatement(sql)) {
             ps.setInt(1, conversationId);
             ps.setInt(2, userId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -164,7 +169,16 @@ public class ConversationDAO {
         c.setId(rs.getInt("id"));
         c.setName(rs.getString("name"));
         c.setType(rs.getString("type"));
-        c.setCreatedAt(LocalDateTime.parse(rs.getString("created_at"), formatter));
+        String createdAtStr = rs.getString("created_at");
+        if (createdAtStr != null) {
+            try {
+                // Try format with seconds
+                c.setCreatedAt(LocalDateTime.parse(createdAtStr.split("\\.")[0], formatter));
+            } catch (Exception e) {
+                // Fallback to now if parse fails
+                c.setCreatedAt(LocalDateTime.now());
+            }
+        }
         return c;
     }
 }

@@ -21,12 +21,19 @@ public class DatabaseManager {
     public Connection getConnection() throws SQLException {
         if (connection == null || connection.isClosed()) {
             connection = DriverManager.getConnection(Constants.DB_URL);
-            connection.createStatement().execute("PRAGMA foreign_keys = ON");
+            if (Constants.DB_URL.startsWith("jdbc:sqlite")) {
+                connection.createStatement().execute("PRAGMA foreign_keys = ON");
+            }
         }
         return connection;
     }
 
     public void initializeDatabase() {
+        if (!Constants.DB_URL.startsWith("jdbc:sqlite")) {
+            System.out.println("Using SQL Server. Schema should be initialized via SSMS script.");
+            return;
+        }
+        
         try {
             Connection conn = getConnection();
             Statement stmt = conn.createStatement();
@@ -102,14 +109,13 @@ public class DatabaseManager {
                 )
             """);
 
-            // Migration: add 'active' column if not exists (for old databases)
+            // Migration: add 'active' column if not exists
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN active INTEGER DEFAULT 0");
-                // Activate existing accounts after migration
-                stmt.execute("UPDATE users SET active = 1 WHERE active = 0");
-            } catch (SQLException ignored) {
-                // Column already exists
-            }
+            } catch (SQLException ignored) {}
+            // Always ensure existing accounts are active if not specified
+            stmt.execute("UPDATE users SET active = 1 WHERE active = 0 AND (username = 'admin' OR username = 'thuthu')");
+            stmt.execute("UPDATE users SET active = 1 WHERE active IS NULL");
 
             // Migration: add security columns if not exists
             try {
@@ -225,10 +231,10 @@ public class DatabaseManager {
             // Migration: add 'status' and 'last_seen' to users
             try {
                 stmt.execute("ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'OFFLINE'");
+            } catch (SQLException ignored) {}
+            try {
                 stmt.execute("ALTER TABLE users ADD COLUMN last_seen DATETIME");
-            } catch (SQLException ignored) {
-                // Columns already exist
-            }
+            } catch (SQLException ignored) {}
 
             seedData(conn);
             System.out.println("Database initialized successfully.");

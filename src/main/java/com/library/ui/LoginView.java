@@ -410,21 +410,39 @@ public class LoginView extends StackPane {
         loginBtn.setDisable(true);
         loginBtn.setText("Đang đăng nhập...");
 
-        User user = userDAO.authenticate(username, password);
-        if (user != null) {
-            if (!user.isActive()) {
-                showLoginError("⏳ Tài khoản đang chờ Admin phê duyệt!\nVui lòng liên hệ quản trị viên.");
+        javafx.concurrent.Task<User> loginTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected User call() throws Exception {
+                return userDAO.authenticate(username, password);
+            }
+        };
+
+        loginTask.setOnSucceeded(e -> {
+            User user = loginTask.getValue();
+            if (user != null) {
+                if (!user.isActive()) {
+                    showLoginError("⏳ Tài khoản đang chờ Admin phê duyệt!\nVui lòng liên hệ quản trị viên.");
+                    loginBtn.setDisable(false);
+                    loginBtn.setText("Đăng nhập");
+                    return;
+                }
+                loggedInUser = user;
+                if (onLoginSuccess != null) onLoginSuccess.run();
+            } else {
+                showLoginError("Sai tên đăng nhập/mật khẩu hoặc lỗi kết nối!");
                 loginBtn.setDisable(false);
                 loginBtn.setText("Đăng nhập");
-                return;
             }
-            loggedInUser = user;
-            if (onLoginSuccess != null) onLoginSuccess.run();
-        } else {
-            showLoginError("Sai tên đăng nhập hoặc mật khẩu!");
+        });
+
+        loginTask.setOnFailed(e -> {
+            showLoginError("Lỗi kết nối tới cơ sở dữ liệu!");
             loginBtn.setDisable(false);
             loginBtn.setText("Đăng nhập");
-        }
+            e.getSource().getException().printStackTrace();
+        });
+
+        new Thread(loginTask).start();
     }
 
     private void handleRegister() {

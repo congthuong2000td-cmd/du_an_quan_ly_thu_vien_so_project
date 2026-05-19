@@ -42,7 +42,10 @@ public class ReaderDAO {
     }
 
     public Reader getByName(String name) {
-        try (PreparedStatement ps = dbManager.getConnection().prepareStatement("SELECT * FROM readers WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1")) {
+        String limitClause = com.library.util.Constants.DB_URL.startsWith("jdbc:sqlite") 
+            ? " LIMIT 1" : " ORDER BY id OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY";
+        String sql = "SELECT * FROM readers WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))" + limitClause;
+        try (PreparedStatement ps = dbManager.getConnection().prepareStatement(sql)) {
             ps.setString(1, name);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) return mapResultSet(rs);
@@ -96,8 +99,11 @@ public class ReaderDAO {
     }
 
     public String generateNextCode() {
+        String sql = com.library.util.Constants.DB_URL.startsWith("jdbc:sqlite")
+            ? "SELECT MAX(CAST(SUBSTR(code, 3) AS INTEGER)) FROM readers WHERE code LIKE 'DG%'"
+            : "SELECT MAX(CAST(SUBSTRING(code, 3, LEN(code)) AS INT)) FROM readers WHERE code LIKE 'DG%'";
         try (Statement stmt = dbManager.getConnection().createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT MAX(CAST(SUBSTR(code, 3) AS INTEGER)) FROM readers WHERE code LIKE 'DG%'")) {
+             ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
                 int next = rs.getInt(1) + 1;
                 return String.format("DG%03d", next);

@@ -12,8 +12,7 @@ public class ChatNotificationDAO {
 
     public boolean addNotification(ChatNotification notification) {
         String sql = "INSERT INTO chat_notifications (user_id, message_id) VALUES (?, ?)";
-        try (Connection conn = DatabaseManager.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = DatabaseManager.getInstance().getConnection().prepareStatement(sql)) {
             ps.setInt(1, notification.getUserId());
             ps.setInt(2, notification.getMessageId());
             return ps.executeUpdate() > 0;
@@ -25,8 +24,7 @@ public class ChatNotificationDAO {
 
     public int getUnreadCount(int userId) {
         String sql = "SELECT COUNT(*) FROM chat_notifications WHERE user_id = ? AND is_read = 0";
-        try (Connection conn = DatabaseManager.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = DatabaseManager.getInstance().getConnection().prepareStatement(sql)) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return rs.getInt(1);
@@ -40,8 +38,7 @@ public class ChatNotificationDAO {
     public void markAsRead(int userId, int conversationId) {
         String sql = "UPDATE chat_notifications SET is_read = 1 " +
                      "WHERE user_id = ? AND message_id IN (SELECT id FROM messages WHERE conversation_id = ?)";
-        try (Connection conn = DatabaseManager.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (PreparedStatement ps = DatabaseManager.getInstance().getConnection().prepareStatement(sql)) {
             ps.setInt(1, userId);
             ps.setInt(2, conversationId);
             ps.executeUpdate();

@@ -1,10 +1,14 @@
 package com.library.dao;
 
-import com.library.model.User;
-import com.library.util.ValidationUtils;
-import java.sql.*;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.library.model.User;
+import com.library.util.ValidationUtils;
 
 public class UserDAO {
     private final DatabaseManager dbManager = DatabaseManager.getInstance();
@@ -146,8 +150,16 @@ public class UserDAO {
         user.setSecurityAnswer(rs.getString("security_answer"));
         user.setStatus(rs.getString("status"));
         String lastSeen = rs.getString("last_seen");
-        if (lastSeen != null) {
-            user.setLastSeen(java.time.LocalDateTime.parse(lastSeen, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        if (lastSeen != null && !lastSeen.isEmpty()) {
+            try {
+                // SQL Server returns datetime with milliseconds like "2026-05-19 00:56:27.0"
+                // Take only the first 19 characters to match pattern "yyyy-MM-dd HH:mm:ss"
+                String cleanedLastSeen = lastSeen.split("\\.")[0];
+                user.setLastSeen(java.time.LocalDateTime.parse(cleanedLastSeen, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            } catch (Exception e) {
+                // If parsing fails, just skip setting lastSeen
+                System.err.println("Error parsing lastSeen: " + lastSeen + " - " + e.getMessage());
+            }
         }
         return user;
     }
@@ -165,7 +177,9 @@ public class UserDAO {
 
     public List<User> searchUsers(String query, int excludeUserId) {
         List<User> users = new ArrayList<>();
-        String sql = "SELECT * FROM users WHERE (username LIKE ? OR full_name LIKE ?) AND id != ? AND active = 1 LIMIT 20";
+        String limitClause = com.library.util.Constants.DB_URL.startsWith("jdbc:sqlite") 
+            ? " LIMIT 20" : " ORDER BY id OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY";
+        String sql = "SELECT * FROM users WHERE (username LIKE ? OR full_name LIKE ?) AND id != ? AND active = 1" + limitClause;
         try (PreparedStatement ps = dbManager.getConnection().prepareStatement(sql)) {
             ps.setString(1, "%" + query + "%");
             ps.setString(2, "%" + query + "%");
