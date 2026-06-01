@@ -62,8 +62,20 @@ public class BorrowDAO {
         return records;
     }
 
+    private boolean isSqlite() {
+        return Constants.DB_URL.startsWith("jdbc:sqlite");
+    }
+
+    private String sqlNowDate() {
+        return isSqlite() ? "date('now')" : "CAST(GETDATE() AS DATE)";
+    }
+
+    private String addDaysToDate(String column, int days) {
+        return isSqlite() ? "date(" + column + ", '+" + days + " days')" : "DATEADD(day, " + days + ", " + column + ")";
+    }
+
     public boolean renewBook(int borrowId) {
-        String sql = "UPDATE borrow_records SET due_date = date(due_date, '+7 days') WHERE id = ?";
+        String sql = "UPDATE borrow_records SET due_date = " + addDaysToDate("due_date", 7) + " WHERE id = ?";
         try (PreparedStatement ps = dbManager.getConnection().prepareStatement(sql)) {
             ps.setInt(1, borrowId);
             return ps.executeUpdate() > 0;
@@ -145,9 +157,9 @@ public class BorrowDAO {
     }
 
     public int getOverdueCount() {
+        String sql = "SELECT COUNT(*) FROM borrow_records WHERE status='OVERDUE' OR (status='BORROWING' AND due_date < " + sqlNowDate() + ")";
         try (Statement stmt = dbManager.getConnection().createStatement();
-             ResultSet rs = stmt.executeQuery(
-                     "SELECT COUNT(*) FROM borrow_records WHERE status='OVERDUE' OR (status='BORROWING' AND due_date < date('now'))")) {
+             ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) return rs.getInt(1);
         } catch (SQLException e) { e.printStackTrace(); }
         return 0;
@@ -155,13 +167,22 @@ public class BorrowDAO {
 
     public Map<String, Integer> getBorrowsByMonth() {
         Map<String, Integer> data = new LinkedHashMap<>();
-        String sql = """
-            SELECT strftime('%m/%Y', borrow_date) as month, COUNT(*) as count
-            FROM borrow_records
-            WHERE borrow_date >= date('now', '-6 months')
-            GROUP BY strftime('%Y-%m', borrow_date)
-            ORDER BY borrow_date ASC
-        """;
+        String sql;
+        if (isSqlite()) {
+            sql = """
+                SELECT strftime('%m/%Y', borrow_date) as month, COUNT(*) as count
+                FROM borrow_records
+                WHERE borrow_date >= date('now', '-6 months')
+                GROUP BY strftime('%Y-%m', borrow_date)
+                ORDER BY borrow_date ASC
+            """;
+        } else {
+            sql = "SELECT FORMAT(borrow_date,'MM/yyyy') as month, COUNT(*) as count " +
+                  "FROM borrow_records " +
+                  "WHERE borrow_date >= DATEADD(month, -6, " + sqlNowDate() + ") " +
+                  "GROUP BY FORMAT(borrow_date,'MM/yyyy') " +
+                  "ORDER BY MIN(borrow_date) ASC";
+        }
         try (Statement stmt = dbManager.getConnection().createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
@@ -193,7 +214,7 @@ public class BorrowDAO {
         String sql = """
             SELECT c.name, COUNT(b.id) as count
             FROM categories c LEFT JOIN books b ON c.id = b.category_id
-            GROUP BY c.id HAVING count > 0 ORDER BY count DESC
+            GROUP BY c.id, c.name HAVING COUNT(b.id) > 0 ORDER BY COUNT(b.id) DESC
         """;
         try (Statement stmt = dbManager.getConnection().createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
