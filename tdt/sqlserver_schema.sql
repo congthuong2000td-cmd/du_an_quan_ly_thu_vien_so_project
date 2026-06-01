@@ -149,6 +149,60 @@ CREATE TABLE chat_notifications (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (message_id) REFERENCES messages(id)
 );
+
+-- 13. Bảng delivery_areas
+CREATE TABLE delivery_areas (
+    id INT PRIMARY KEY IDENTITY(1,1),
+    district NVARCHAR(100),
+    ward NVARCHAR(100),
+    base_fee FLOAT DEFAULT 0,
+    is_active INT DEFAULT 1
+);
+
+-- 14. Bảng delivery_orders
+CREATE TABLE delivery_orders (
+    id INT PRIMARY KEY IDENTITY(1,1),
+    reader_id INT NOT NULL,
+    type VARCHAR(50) DEFAULT 'DELIVERY', 
+    recipient_name NVARCHAR(255),
+    recipient_phone VARCHAR(20),
+    delivery_address NVARCHAR(500),
+    shipping_fee FLOAT DEFAULT 0,
+    deposit_fee FLOAT DEFAULT 0,
+    total_amount FLOAT DEFAULT 0,
+    payment_method VARCHAR(50) DEFAULT 'COD',
+    payment_status VARCHAR(50) DEFAULT 'PENDING',
+    status VARCHAR(50) DEFAULT 'PENDING', 
+    note NVARCHAR(MAX),
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (reader_id) REFERENCES readers(id)
+);
+
+-- 15. Bảng delivery_order_items
+CREATE TABLE delivery_order_items (
+    order_id INT NOT NULL,
+    book_id INT NOT NULL,
+    PRIMARY KEY (order_id, book_id),
+    FOREIGN KEY (order_id) REFERENCES delivery_orders(id),
+    FOREIGN KEY (book_id) REFERENCES books(id)
+);
+
+-- 16. Bảng delivery_tasks
+CREATE TABLE delivery_tasks (
+    id INT PRIMARY KEY IDENTITY(1,1),
+    order_id INT NOT NULL,
+    shipper_id INT, 
+    shipper_type VARCHAR(50) DEFAULT 'INTERNAL',
+    external_provider NVARCHAR(255),
+    tracking_code VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'ASSIGNED',
+    proof_image_url VARCHAR(500),
+    failure_reason NVARCHAR(MAX),
+    created_at DATETIME DEFAULT GETDATE(),
+    updated_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (order_id) REFERENCES delivery_orders(id),
+    FOREIGN KEY (shipper_id) REFERENCES users(id)
+);
 GO
 
 -- =============================================

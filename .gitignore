@@ -1,0 +1,16 @@
+# Maven build output
+target/
+
+# Logs
+build_log.txt
+output_log.txt
+output_verify.txt
+
+# Databases
+*.db
+library.db
+
+# IDEs
+.vscode/
+.idea/
+*.class
