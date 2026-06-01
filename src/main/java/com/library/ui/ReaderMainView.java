@@ -59,12 +59,13 @@ public class ReaderMainView extends BorderPane {
 
         Button catalogBtn = createMenuButton("📚  Kho sách", e -> showCatalog());
         Button myBorrowsBtn = createMenuButton("⏳  Sách đang mượn", e -> showMyBorrows());
+        Button cartBtn = createMenuButton("🛒  Giỏ hàng", e -> showCart());
         Button myReservationsBtn = createMenuButton("📋  Sách đã đặt", e -> showMyReservations());
         Button readOnlineBtn = createMenuButton("📖  Đọc Online", e -> showReadOnline());
         Button favoritesBtn = createMenuButton("💖  Sách yêu thích", e -> showFavorites());
-        Button chatBtn = createMenuButton("\uD83D\uDCAC  Tin nhắn", e -> showChat());
+        Button chatBtn = createMenuButton("💬  Tin nhắn", e -> showChat());
 
-        menuBox.getChildren().addAll(catalogBtn, myBorrowsBtn, myReservationsBtn, readOnlineBtn, favoritesBtn, chatBtn);
+        menuBox.getChildren().addAll(catalogBtn, myBorrowsBtn, cartBtn, myReservationsBtn, readOnlineBtn, favoritesBtn, chatBtn);
 
         // Badge for chat
         com.library.service.ChatService.getInstance().addNotificationListener(count -> {
@@ -145,6 +146,10 @@ public class ReaderMainView extends BorderPane {
     private void showCatalog() {
         setActiveButton((Button) menuBox.getChildren().get(0));
         setContent(new ReaderCatalogPanel(currentUser));
+    }
+    
+    private void showCart() {
+        setContent(new ReaderCartPanel(currentUser));
     }
 
     private void showMyBorrows() {

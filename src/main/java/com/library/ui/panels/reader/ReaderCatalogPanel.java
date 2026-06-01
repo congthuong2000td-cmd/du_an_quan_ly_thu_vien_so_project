@@ -1,5 +1,7 @@
 package com.library.ui.panels.reader;
 
+import com.library.service.CartService;
+
 import com.library.dao.BookDAO;
 import com.library.dao.BorrowDAO;
 import com.library.dao.CategoryDAO;
@@ -225,6 +227,12 @@ public class ReaderCatalogPanel extends VBox {
         reserveBtn.setStyle("-fx-background-color: #a6e3a1; -fx-text-fill: #11111b; -fx-cursor: hand; -fx-font-weight: bold;");
         HBox.setHgrow(reserveBtn, Priority.ALWAYS);
 
+        // Cart button
+        Button cartBtn = new Button("🛒 Giỏ hàng");
+        cartBtn.setMaxWidth(Double.MAX_VALUE);
+        cartBtn.setStyle("-fx-background-color: #f38ba8; -fx-text-fill: #11111b; -fx-cursor: hand; -fx-font-weight: bold;");
+        HBox.setHgrow(cartBtn, Priority.ALWAYS);
+
         if (book.getAvailable() > 0) {
             if (reservationDAO.hasPendingReservation(currentUser.getId(), book.getId())) {
                 reserveBtn.setText("⏳ Đã đặt - Chờ duyệt");
@@ -235,11 +243,30 @@ public class ReaderCatalogPanel extends VBox {
                 reserveBtn.setOnAction(e -> handleReserve(book));
             }
             borrowBtn.setOnAction(e -> handleBorrowDirectly(book));
-            actionsRow.getChildren().addAll(borrowBtn, reserveBtn);
+            
+            cartBtn.setOnAction(e -> {
+                if (CartService.getInstance().containsBook(book.getId())) {
+                    new Alert(Alert.AlertType.INFORMATION, "Sách đã có trong giỏ hàng!").show();
+                } else {
+                    CartService.getInstance().addBook(book);
+                    cartBtn.setText("✅ Đã thêm");
+                    cartBtn.setStyle("-fx-background-color: #45475a; -fx-text-fill: #a6e3a1; -fx-cursor: hand; -fx-font-weight: bold;");
+                    cartBtn.setDisable(true);
+                }
+            });
+            
+            if (CartService.getInstance().containsBook(book.getId())) {
+                cartBtn.setText("✅ Đã thêm");
+                cartBtn.setStyle("-fx-background-color: #45475a; -fx-text-fill: #a6e3a1; -fx-cursor: hand; -fx-font-weight: bold;");
+                cartBtn.setDisable(true);
+            }
+
+            actionsRow.getChildren().addAll(borrowBtn, cartBtn); // Thay thế reserveBtn bằng cartBtn để không quá chật, hoặc gom nhóm
         } else {
             reserveBtn.setText("Hết sách");
             reserveBtn.setDisable(true);
             borrowBtn.setDisable(true);
+            cartBtn.setDisable(true);
             actionsRow.getChildren().addAll(reserveBtn);
         }
 

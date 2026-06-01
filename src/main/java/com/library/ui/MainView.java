@@ -74,10 +74,11 @@ public class MainView extends BorderPane {
         Button readerBtn = createMenuButton("\uD83D\uDC65  Quản lý Độc giả", e -> showReaders());
         Button borrowBtn = createMenuButton("\uD83D\uDD04  Mượn / Trả sách", e -> showBorrow());
         Button reserveBtn = createMenuButton("\uD83D\uDCCB  Duyệt đặt sách", e -> showReservations());
+        Button deliveryBtn = createMenuButton("🚚  Quản lý Giao sách", e -> showOrders());
         Button statsBtn = createMenuButton("\uD83D\uDCC8  Thống kê", e -> showStatistics());
         Button chatBtn = createMenuButton("\uD83D\uDCAC  Tin nhắn", e -> showChat());
         
-        menuBox.getChildren().addAll(dashBtn, bookBtn, catBtn, readerBtn, borrowBtn, reserveBtn, statsBtn, chatBtn);
+        menuBox.getChildren().addAll(dashBtn, bookBtn, catBtn, readerBtn, borrowBtn, reserveBtn, deliveryBtn, statsBtn, chatBtn);
 
         // Badge for chat
         com.library.service.ChatService.getInstance().addNotificationListener(count -> {
@@ -193,6 +194,10 @@ public class MainView extends BorderPane {
     private void showReservations() {
         reservationPanel = new ReservationAdminPanel();
         setContent(reservationPanel);
+    }
+    
+    private void showOrders() {
+        setContent(new com.library.ui.panels.admin.OrderManagementPanel());
     }
 
     private void showStatistics() {

@@ -236,8 +236,77 @@ public class DatabaseManager {
                 stmt.execute("ALTER TABLE users ADD COLUMN last_seen DATETIME");
             } catch (SQLException ignored) {}
 
+            // Create delivery_areas table
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS delivery_areas (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    district TEXT,
+                    ward TEXT,
+                    base_fee REAL DEFAULT 0,
+                    is_active INTEGER DEFAULT 1
+                )
+            """);
+
+            // Create delivery_orders table
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS delivery_orders (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    reader_id INTEGER NOT NULL,
+                    type TEXT DEFAULT 'DELIVERY', 
+                    recipient_name TEXT,
+                    recipient_phone TEXT,
+                    delivery_address TEXT,
+                    shipping_fee REAL DEFAULT 0,
+                    deposit_fee REAL DEFAULT 0,
+                    total_amount REAL DEFAULT 0,
+                    payment_method TEXT DEFAULT 'COD',
+                    payment_status TEXT DEFAULT 'PENDING',
+                    status TEXT DEFAULT 'PENDING', 
+                    note TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (reader_id) REFERENCES readers(id)
+                )
+            """);
+
+            // Create delivery_order_items table
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS delivery_order_items (
+                    order_id INTEGER NOT NULL,
+                    book_id INTEGER NOT NULL,
+                    PRIMARY KEY (order_id, book_id),
+                    FOREIGN KEY (order_id) REFERENCES delivery_orders(id),
+                    FOREIGN KEY (book_id) REFERENCES books(id)
+                )
+            """);
+
+            // Create delivery_tasks table
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS delivery_tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    order_id INTEGER NOT NULL,
+                    shipper_id INTEGER, 
+                    shipper_type TEXT DEFAULT 'INTERNAL',
+                    external_provider TEXT,
+                    tracking_code TEXT,
+                    status TEXT DEFAULT 'ASSIGNED',
+                    proof_image_url TEXT,
+                    failure_reason TEXT,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (order_id) REFERENCES delivery_orders(id),
+                    FOREIGN KEY (shipper_id) REFERENCES users(id)
+                )
+            """);
+
+            // Migration for old databases (SQLite)
+            try { stmt.execute("ALTER TABLE delivery_orders ADD COLUMN payment_method TEXT DEFAULT 'COD'"); } catch(Exception ignored) {}
+            try { stmt.execute("ALTER TABLE delivery_orders ADD COLUMN payment_status TEXT DEFAULT 'PENDING'"); } catch(Exception ignored) {}
+            try { stmt.execute("ALTER TABLE delivery_tasks ADD COLUMN shipper_type TEXT DEFAULT 'INTERNAL'"); } catch(Exception ignored) {}
+            try { stmt.execute("ALTER TABLE delivery_tasks ADD COLUMN external_provider TEXT"); } catch(Exception ignored) {}
+            try { stmt.execute("ALTER TABLE delivery_tasks ADD COLUMN tracking_code TEXT"); } catch(Exception ignored) {}
+
+            System.out.println("Local SQLite database initialized successfully.");
             seedData(conn);
-            System.out.println("Database initialized successfully.");
         } catch (SQLException e) {
             System.err.println("Database initialization error: " + e.getMessage());
             e.printStackTrace();

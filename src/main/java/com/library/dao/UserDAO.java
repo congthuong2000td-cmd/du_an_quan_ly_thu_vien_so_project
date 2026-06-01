@@ -38,6 +38,16 @@ public class UserDAO {
         return users;
     }
 
+    public User getById(int id) {
+        String sql = "SELECT * FROM users WHERE id=?";
+        try (PreparedStatement ps = dbManager.getConnection().prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return mapResultSet(rs);
+        } catch (SQLException e) { e.printStackTrace(); }
+        return null;
+    }
+
     public List<User> getPendingUsers() {
         List<User> users = new ArrayList<>();
         try (PreparedStatement ps = dbManager.getConnection().prepareStatement(
